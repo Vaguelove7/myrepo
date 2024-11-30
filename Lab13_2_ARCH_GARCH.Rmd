@@ -1,0 +1,45 @@
+---
+title: "第13次上机报告"
+output: html_notebook
+author: "杨俊华 2022193010"
+date: "2024-11-29"
+---
+
+
+
+```{r, message=FALSE}
+library(fpp3)
+library(fGarch)
+```
+
+## 任务一
+
+```{r}
+da = read.table("../RDA/data/m-sp2691.txt",header=TRUE)
+da = dplyr::mutate(da,date=yearmonth(Month),rtn=MonthlyReturn) |>
+  select(date,rtn) |> as_tsibble(index=date)
+da |> gg_tsdisplay(plot_type = "p")
+fit = model(da,arma_2_3 = ARIMA(rtn~pdq(2,0,3,fixed=list(ar1=0))+PDQ(0,0,0)))
+fit |> gg_tsresiduals()
+fabletools::report(fit) # ARMA(2,3)
+res = residuals(fit)
+res |> ggplot(aes(sample=.resid))+
+  stat_qq()+
+  stat_qq_line(,col="red") # 残差不是正态分布
+fBasics::basicStats(da$rtn) # 注意这里所显示的峰度实质为超额峰度。
+fBasics::jarqueberaTest(da$rtn) # Jarque-Bera正态性检验
+p1 <- res |> ACF(.resid  ) |> autoplot() 
+p2 <- res |> ACF(.resid^2) |> autoplot()
+gridExtra::grid.arrange(p1,p2,nrow=1) # Xt或者Zt是白噪声序列，但并不是独立序列，这是因为Xt^2或者Zt^2往往具有显著的序列相关性
+res <- dplyr::mutate(res,.resid2 = .resid^2)
+res |> ACF(.resid2) |> autoplot()
+fit1 <- res |> model(m_aug = TSLM(.resid2 ~ lag(.resid2) + lag(.resid2,2)+lag(.resid2,3)+lag(.resid2,4))) # 辅助回归建模
+fabletools::report(fit1) #  上述新息序列平方的ACF和辅助回归的F检验都表明存在明显的ARCH效应。
+res |> PACF(.resid2) |> autoplot() # 定阶：尝试ARCH(3)模型
+fit2 = garchFit(rtn ~ arma(2,3) + garch(3,0), data=da,
+                cond.dist = "norm",trace=F) # 拟合ARCH模型
+summary(fit2)
+plot(fit2,which = 1:16)
+```
+
+
