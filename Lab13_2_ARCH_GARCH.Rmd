@@ -15,7 +15,7 @@ library(fGarch)
 ## 任务一
 
 ```{r}
-da = read.table("../RDA/data/m-sp2691.txt",header=TRUE)
+da = read.table("../myrepo/data/m-sp2691.txt",header=TRUE)
 da = dplyr::mutate(da,date=yearmonth(Month),rtn=MonthlyReturn) |>
   select(date,rtn) |> as_tsibble(index=date)
 da |> gg_tsdisplay(plot_type = "p")
@@ -39,7 +39,7 @@ res |> PACF(.resid2) |> autoplot() # 定阶：尝试ARCH(3)模型
 fit2 = garchFit(rtn ~ arma(2,3) + garch(3,0), data=da,
                 cond.dist = "norm",trace=F) # 拟合ARCH模型
 summary(fit2)
-plot(fit2,which = 1:16)
+plot(fit2,which = 1:4)
 ```
 
 
